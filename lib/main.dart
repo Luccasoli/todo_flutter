@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'models/item.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+const STORAGE_KEY = '@data';
+
 void main() => runApp(Main());
 
 class Main extends StatelessWidget {
@@ -19,7 +21,7 @@ class Main extends StatelessWidget {
 }
 
 class HomePage extends StatefulWidget {
-  final List<Item> items = new List<Item>();
+  List<Item> items = new List<Item>();
 
   HomePage();
 
@@ -30,6 +32,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   var newTaskController = TextEditingController();
 
+  _HomePageState() {
+    this.load();
+  }
+
   void add() {
     if (newTaskController.text.isNotEmpty) {
       setState(() {
@@ -39,18 +45,34 @@ class _HomePageState extends State<HomePage> {
         ));
       });
       newTaskController.clear();
+      this.save();
     }
   }
 
   void remove(int index) {
     setState(() {
       widget.items.removeAt(index);
+      this.save();
     });
   }
 
   Future load() async {
     var pref = await SharedPreferences.getInstance();
-    var data = pref.getString('data');
+    var data = pref.getString(STORAGE_KEY);
+
+    if (data != null) {
+      List<dynamic> json = jsonDecode(data);
+      List<Item> result = json.map((item) => Item.fromJson(item)).toList();
+      print(result);
+      setState(() {
+        widget.items = result;
+      });
+    }
+  }
+
+  void save() async {
+    var pref = await SharedPreferences.getInstance();
+    await pref.setString(STORAGE_KEY, jsonEncode(widget.items));
   }
 
   @override
@@ -95,6 +117,7 @@ class _HomePageState extends State<HomePage> {
               onChanged: (bool value) {
                 setState(() {
                   item.isDone = value;
+                  this.save();
                 });
               },
             ),
